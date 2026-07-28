@@ -199,6 +199,23 @@
     .nav-btn.next{right:2%;}
   }
 
+  .mute-btn{
+    position:absolute;top:22px;right:22px;
+    width:38px;height:38px;border-radius:50%;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    color:var(--text);font-size:15px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;z-index:5;
+    transition:background .2s, transform .2s;
+    backdrop-filter:blur(6px);
+    opacity:.75;
+  }
+  .mute-btn:hover{background:rgba(255,255,255,.14);opacity:1;}
+  @media (max-width:560px){
+    .mute-btn{width:34px;height:34px;font-size:13px;top:16px;right:16px;}
+  }
+
   .dots{
     position:absolute;bottom:28px;left:0;right:0;
     display:flex;gap:9px;justify-content:center;z-index:4;
@@ -234,6 +251,7 @@
 
 <div class="stage" id="stage">
   <div class="eyebrow">IKS EduGames</div>
+  <button class="mute-btn" id="muteBtn" aria-label="Bunyi">🔊</button>
 
   <button class="nav-btn prev" id="prevBtn" aria-label="Game sebelumnya">‹</button>
   <button class="nav-btn next" id="nextBtn" aria-label="Game seterusnya">›</button>
@@ -256,6 +274,130 @@
 </div>
 
 <script>
+// ==================================================
+// MUZIK LATAR AMBIENT + SFX NAVIGASI (procedural, Web Audio API - tiada fail luar,
+// gaya "PlayStation Store" - pad lembut berevolusi perlahan + klik/whoosh halus)
+// ==================================================
+const SFX = (() => {
+  let ctx = null, masterGain = null, padGain = null, padNodes = [];
+  let padTimer = null;
+  const MASTER_VOL = 1;
+  const PAD_VOL = 0.05;
+  let muted = false;
+  let started = false;
+
+  function ac(){
+    if(!ctx){
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = ctx.createGain();
+      masterGain.gain.value = muted ? 0 : MASTER_VOL;
+      masterGain.connect(ctx.destination);
+      padGain = ctx.createGain();
+      padGain.gain.value = muted ? 0 : PAD_VOL;
+      padGain.connect(ctx.destination);
+    }
+    return ctx;
+  }
+
+  function tone(freq, dur, type, vol, delay){
+    const c = ac();
+    const t0 = c.currentTime + (delay || 0);
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol || 0.12, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(g); g.connect(masterGain);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+  let noiseBuf = null;
+  function getNoiseBuf(){
+    if(noiseBuf) return noiseBuf;
+    const c = ac();
+    const len = c.sampleRate;
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i] = Math.random()*2-1;
+    noiseBuf = buf;
+    return buf;
+  }
+  function noise(dur, vol, freq, filterType){
+    const c = ac();
+    const t0 = c.currentTime;
+    const src = c.createBufferSource();
+    src.buffer = getNoiseBuf();
+    const filt = c.createBiquadFilter();
+    filt.type = filterType || 'bandpass';
+    filt.frequency.setValueAtTime(freq || 1400, t0);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol || 0.1, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    src.connect(filt); filt.connect(g); g.connect(masterGain);
+    src.start(t0); src.stop(t0 + dur + 0.05);
+  }
+
+  // Pad ambient - beberapa chord lembut bertindih, bertukar perlahan-lahan,
+  // konsep macam muzik latar menu PS5/App Store - tenang, tak mengganggu.
+  const PAD_CHORDS = [
+    [130.81, 164.81, 196.00, 246.94],  // C3 E3 G3 B3
+    [146.83, 174.61, 220.00, 261.63],  // D3 F3 A3 C4
+    [110.00, 138.59, 164.81, 220.00],  // A2 C#3 E3 A3
+    [130.81, 155.56, 196.00, 246.94],  // C3 Eb3 G3 B3
+  ];
+  let chordIdx = 0;
+  function playPadChord(){
+    const c = ac();
+    const chord = PAD_CHORDS[chordIdx % PAD_CHORDS.length];
+    chordIdx++;
+    const dur = 9;
+    chord.forEach((freq, i) => {
+      const osc = c.createOscillator();
+      const g = c.createGain();
+      osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+      osc.frequency.value = freq;
+      const t0 = c.currentTime;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(1, t0 + 3.2);
+      g.gain.linearRampToValueAtTime(1, t0 + dur - 3.2);
+      g.gain.linearRampToValueAtTime(0, t0 + dur);
+      osc.connect(g); g.connect(padGain);
+      osc.start(t0); osc.stop(t0 + dur + 0.1);
+    });
+  }
+  function startMusic(){
+    if(started) return;
+    started = true;
+    ac();
+    playPadChord();
+    padTimer = setInterval(playPadChord, 7000);
+  }
+  function stopMusic(){
+    if(padTimer){ clearInterval(padTimer); padTimer = null; }
+    started = false;
+  }
+
+  function setMuted(m){
+    muted = m;
+    ac();
+    masterGain.gain.value = m ? 0 : MASTER_VOL;
+    padGain.gain.value = m ? 0 : PAD_VOL;
+  }
+  function isMuted(){ return muted; }
+
+  return {
+    setMuted, isMuted, startMusic, stopMusic,
+    // whoosh halus bila tukar kad (swipe/anak panah)
+    swipe: () => { noise(0.28, 0.09, 2600, 'bandpass'); },
+    // klik lembut untuk butang/dot
+    click: () => { tone(900, 0.06, 'sine', 0.1); },
+    // chime lembut bila masuk portal (CTA)
+    confirm: () => { tone(600, 0.1, 'sine', 0.14); tone(900, 0.14, 'sine', 0.16, 0.07); }
+  };
+})();
+
 const GAMES = [
   {
     id: 'bahasa-melayu-quest',
@@ -399,6 +541,7 @@ function render(i){
 function goTo(i){
   if(animating || i===current) return;
   animating = true;
+  SFX.swipe();
   current = (i + GAMES.length) % GAMES.length;
   card.classList.add('fading');
   setTimeout(()=>{
@@ -441,7 +584,25 @@ window.addEventListener('mouseup', (e)=>{
 ctaBtn.addEventListener('click', ()=>{
   const g = GAMES[current];
   if(g.locked || !g.url) return;
-  window.location.href = g.url;
+  SFX.confirm();
+  setTimeout(()=>{ window.location.href = g.url; }, 160);
+});
+
+// ---- muzik latar: mula bila interaksi pertama pengguna (dasar autoplay browser) ----
+const muteBtn = document.getElementById('muteBtn');
+function beginAmbience(){
+  SFX.startMusic();
+  window.removeEventListener('pointerdown', beginAmbience);
+  window.removeEventListener('keydown', beginAmbience);
+}
+window.addEventListener('pointerdown', beginAmbience, { once: true });
+window.addEventListener('keydown', beginAmbience, { once: true });
+
+muteBtn.addEventListener('click', ()=>{
+  const nowMuted = !SFX.isMuted();
+  SFX.setMuted(nowMuted);
+  muteBtn.textContent = nowMuted ? '🔇' : '🔊';
+  SFX.click();
 });
 
 render(0);
