@@ -282,7 +282,7 @@ const SFX = (() => {
   let ctx = null, masterGain = null, padGain = null, padNodes = [];
   let padTimer = null;
   const MASTER_VOL = 1;
-  const PAD_VOL = 0.05;
+  const PAD_VOL = 0.11;
   let muted = false;
   let started = false;
 
@@ -295,6 +295,9 @@ const SFX = (() => {
       padGain = ctx.createGain();
       padGain.gain.value = muted ? 0 : PAD_VOL;
       padGain.connect(ctx.destination);
+    }
+    if(ctx.state === 'suspended'){
+      ctx.resume().catch(()=>{});
     }
     return ctx;
   }
@@ -389,6 +392,7 @@ const SFX = (() => {
 
   return {
     setMuted, isMuted, startMusic, stopMusic,
+    resumeIfNeeded: () => { if(ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{}); },
     // whoosh halus bila tukar kad (swipe/anak panah)
     swipe: () => { noise(0.28, 0.09, 2600, 'bandpass'); },
     // klik lembut untuk butang/dot
@@ -541,6 +545,7 @@ function render(i){
 function goTo(i){
   if(animating || i===current) return;
   animating = true;
+  SFX.startMusic();
   SFX.swipe();
   current = (i + GAMES.length) % GAMES.length;
   card.classList.add('fading');
@@ -583,6 +588,7 @@ window.addEventListener('mouseup', (e)=>{
 
 ctaBtn.addEventListener('click', ()=>{
   const g = GAMES[current];
+  SFX.startMusic();
   if(g.locked || !g.url) return;
   SFX.confirm();
   setTimeout(()=>{ window.location.href = g.url; }, 160);
@@ -593,15 +599,25 @@ const muteBtn = document.getElementById('muteBtn');
 function beginAmbience(){
   SFX.startMusic();
   window.removeEventListener('pointerdown', beginAmbience);
+  window.removeEventListener('touchstart', beginAmbience);
+  window.removeEventListener('mousedown', beginAmbience);
   window.removeEventListener('keydown', beginAmbience);
+  window.removeEventListener('click', beginAmbience);
 }
 window.addEventListener('pointerdown', beginAmbience, { once: true });
+window.addEventListener('touchstart', beginAmbience, { once: true, passive: true });
+window.addEventListener('mousedown', beginAmbience, { once: true });
 window.addEventListener('keydown', beginAmbience, { once: true });
+window.addEventListener('click', beginAmbience, { once: true });
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') SFX.resumeIfNeeded();
+});
 
 muteBtn.addEventListener('click', ()=>{
   const nowMuted = !SFX.isMuted();
   SFX.setMuted(nowMuted);
   muteBtn.textContent = nowMuted ? '🔇' : '🔊';
+  SFX.startMusic();
   SFX.click();
 });
 
