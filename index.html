@@ -17,7 +17,7 @@
     --accent-dim:#5a3f8a;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;height:100%;overflow:hidden;}
+  html,body{margin:0;padding:0;height:100%;overflow-x:hidden;overflow-y:auto;}
   body{
     background:#080b14;
     color:var(--text);
@@ -98,25 +98,24 @@
 
   .stage{
     position:relative;z-index:2;
-    height:100dvh;
+    min-height:100dvh;
     display:flex;flex-direction:column;
     align-items:center;justify-content:center;
-    padding:24px;
+    padding:clamp(12px,3vh,24px) 20px;
     touch-action:pan-y;
   }
 
   .eyebrow{
-    position:absolute;top:26px;left:0;right:0;
+    position:absolute;top:clamp(10px,2.4vh,26px);left:0;right:0;
     text-align:center;
-    font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+    font-size:clamp(9px,1.3vh,11px);letter-spacing:.28em;text-transform:uppercase;
     color:var(--gold);font-weight:600;opacity:.8;
   }
   .eyebrow::before,.eyebrow::after{content:"✦";margin:0 9px;opacity:.6;}
 
   .slide-wrap{
     position:relative;
-    width:min(340px, 70vw);
-    max-width:360px;
+    width:clamp(200px, min(64vw, 44vh), 360px);
   }
 
   .card{
@@ -152,22 +151,22 @@
   .arch-glow{position:absolute;left:0;right:0;bottom:0;height:50%;
     background:linear-gradient(180deg,transparent,rgba(0,0,0,.6) 75%);z-index:2;pointer-events:none;}
 
-  .tag-row{display:flex;gap:8px;justify-content:center;margin:16px 0 8px;flex-wrap:wrap;}
+  .tag-row{display:flex;gap:8px;justify-content:center;margin:clamp(8px,2vh,16px) 0 clamp(4px,1vh,8px);flex-wrap:wrap;}
   .tag{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
     padding:5px 11px;border-radius:100px;background:rgba(255,255,255,.07);
     color:var(--accent);border:1px solid rgba(255,255,255,.09);}
 
-  .p-title{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:clamp(24px,5vw,32px);
-    text-align:center;margin:2px 0 6px;color:#fff;}
-  .p-tagline{text-align:center;font-size:13.5px;color:var(--text-dim);line-height:1.55;
-    max-width:320px;margin:0 auto 20px;min-height:40px;}
+  .p-title{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:clamp(19px,4.4vh,32px);
+    text-align:center;margin:2px 0 clamp(2px,1vh,6px);color:#fff;}
+  .p-tagline{text-align:center;font-size:clamp(11.5px,1.9vh,13.5px);color:var(--text-dim);line-height:1.5;
+    max-width:320px;margin:0 auto clamp(10px,2.4vh,20px);min-height:clamp(0px,4.4vh,40px);}
 
   .p-cta{
     display:flex;align-items:center;justify-content:center;gap:9px;
     margin:0 auto;width:fit-content;
-    padding:14px 30px;border-radius:14px;
+    padding:clamp(9px,1.8vh,14px) clamp(22px,5vw,30px);border-radius:14px;
     background:linear-gradient(180deg,var(--accent),var(--accent-dim));
-    color:#1a1305;font-weight:700;font-size:15px;
+    color:#1a1305;font-weight:700;font-size:clamp(13px,1.9vh,15px);
     box-shadow:0 6px 0 rgba(0,0,0,.28), 0 12px 24px -8px var(--accent);
     cursor:pointer;border:none;
     transition:filter .2s, transform .12s;
@@ -217,7 +216,7 @@
   }
 
   .dots{
-    position:absolute;bottom:28px;left:0;right:0;
+    position:absolute;bottom:clamp(10px,2.2vh,28px);left:0;right:0;
     display:flex;gap:9px;justify-content:center;z-index:4;
   }
   .dot{
@@ -232,12 +231,15 @@
   }
 
   .swipe-hint{
-    position:absolute;bottom:56px;left:0;right:0;text-align:center;
-    font-size:11px;color:var(--text-dim);opacity:.65;
+    position:absolute;bottom:clamp(34px,6vh,56px);left:0;right:0;text-align:center;
+    font-size:clamp(9.5px,1.3vh,11px);color:var(--text-dim);opacity:.65;
     letter-spacing:.03em;
     animation:hintFade 2.6s ease-in-out 1;
   }
   @keyframes hintFade{0%{opacity:0;}20%{opacity:.65;}80%{opacity:.65;}100%{opacity:0;}}
+  @media (max-height:480px){
+    .swipe-hint{display:none;}
+  }
 </style>
 </head>
 <body>
